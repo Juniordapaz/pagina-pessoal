@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autenticação de Documento - SUAP</title>
+    <style>
+        :root {
+            --green-suap: #28a745;
+            --green-hover: #218838;
+            --text-color: #333;
+            --label-width: 160px;
+            --info-bg: #d9edf7;
+            --info-text: #31708f;
+            --info-border: #bce8f1;
+            --link-color: #23527c;
+            --font-stack: "Roboto", "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: var(--font-stack);
+        }
+
+        body {
+            min-height: 100vh;
+            background: radial-gradient(circle at center, #555, #222);
+            display: flex;
+            font-size: 14px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 240px;
+            height: 100vh;
+            background: linear-gradient(to bottom, #3a3a3a, #1a1a1a);
+            position: fixed;
+            left: 0;
+            top: 0;
+            transition: transform 0.3s;
+            z-index: 1000;
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-240px);
+        }
+
+        .logo-container {
+            padding: 30px 20px;
+            white-space: nowrap;
+        }
+
+        .logo-text {
+            color: rgba(255,255,255,0.8);
+            font-size: 32px;
+            font-weight: 300;
+            letter-spacing: -1px;
+        }
+
+        /* Toggle Button */
+        .toggle-btn {
+            position: fixed;
+            top: 50%;
+            left: 228px;
+            width: 24px;
+            height: 24px;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+            transform: translateY(-50%);
+            transition: left 0.3s;
+        }
+
+        .sidebar.collapsed + .main-content .toggle-btn {
+            left: 12px;
+            background: rgba(0,0,0,0.25);
+        }
+
+        .toggle-icon {
+            width: 8px;
+            height: 8px;
+            border-right: 2px solid rgba(255,255,255,0.8);
+            border-bottom: 2px solid rgba(255,255,255,0.8);
+            transform: rotate(135deg);
+            margin-right: -3px;
+        }
+
+        .sidebar.collapsed ~ .main-content .toggle-icon {
+            transform: rotate(-45deg);
+            margin-right: 3px;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex-grow: 1;
+            margin-left: 240px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            transition: margin-left 0.3s;
+            min-height: 100vh;
+        }
+
+        .sidebar.collapsed ~ .main-content {
+            margin-left: 0;
+        }
+
+        .card {
+            background: #fff;
+            width: 100%;
+            max-width: 900px;
+            border-radius: 4px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            padding: 40px;
+            min-height: 550px;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 26px;
+            margin-bottom: 30px;
+            font-weight: 500;
+        }
+
+        /* Accordion */
+        .accordion-title {
+            color: #888;
+            font-size: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .accordion-title::before {
+            content: '';
+            display: inline-block;
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 4px solid #888;
+            margin-right: 8px;
+        }
+
+        /* Form Styles */
+        .form-group {
+            background: #fcfcfc;
+            border: 1px solid #e0e0e0;
+            margin-bottom: -1px;
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+        }
+
+        .form-group:first-of-type {
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+        }
+
+        .form-group:last-of-type {
+            border-bottom-left-radius: 4px;
+            border-bottom-right-radius: 4px;
+            margin-bottom: 25px;
+        }
+
+        .form-label {
+            width: var(--label-width);
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+            text-align: right;
+            margin-right: 25px;
+            flex-shrink: 0;
+        }
+
+        .required {
+            color: #d9534f;
+            margin-left: 2px;
+            font-weight: bold;
+        }
+
+        .form-input-container {
+            flex-grow: 1;
+            position: relative;
+        }
+
+        input[type="text"], input[type="date"] {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 13px;
+            outline: none;
+            background: #fff;
+            box-shadow: inset 0 1px 1px rgba(0,0,0,0.075);
+        }
+
+        input:focus {
+            border-color: #66afe9;
+            box-shadow: inset 0 1px 1px rgba(0,0,0,0.075), 0 0 6px rgba(102, 175, 233, 0.6);
+        }
+
+        /* Custom Dropdown */
+        .custom-select-trigger {
+            display: block;
+            width: 100%;
+            padding: 8px 12px;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            cursor: pointer;
+            color: #333;
+            position: relative;
+            box-shadow: inset 0 1px 1px rgba(0,0,0,0.075);
+            font-size: 13px;
+        }
+
+        .custom-select-trigger::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            right: 12px;
+            transform: translateY(-50%);
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 4px solid #555;
+        }
+
+        .custom-options {
+            position: absolute;
+            display: none;
+            top: 100%;
+            left: 0;
+            right: 0;
+            border: 1px solid #ccc;
+            border-top: none;
+            background: #fff;
+            z-index: 100;
+            max-height: 300px;
+            overflow-y: auto;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .custom-options.open {
+            display: block;
+        }
+
+        .custom-option {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+        }
+
+        .custom-option:hover {
+            background: #666;
+            color: #fff;
+        }
+
+        .custom-option.selected {
+            background: #f5f5f5;
+            font-weight: 600;
+        }
+
+        /* Button */
+        .btn-submit {
+            background: var(--green-suap);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .btn-submit:hover {
+            background: var(--green-hover);
+        }
+
+        /* Results */
+        #resultSection {
+            display: none;
+            margin-top: 40px;
+        }
+
+        .suap-message-box {
+            background: var(--info-bg);
+            color: var(--info-text);
+            border: 1px solid var(--info-border);
+            padding: 15px;
+            border-radius: 3px;
+            font-size: 13px;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .icon-circle {
+            background: #337ab7;
+            color: white;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-family: serif;
+            font-size: 11px;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+
+        .suap-link {
+            color: var(--link-color);
+            text-decoration: none;
+            margin-left: 5px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .suap-link:hover {
+            text-decoration: underline;
+        }
+
+        .alert-error {
+            display: none;
+            margin-top: 25px;
+            padding: 12px;
+            border-radius: 3px;
+            font-size: 13px;
+            background: #f2dede;
+            color: #a94442;
+            border: 1px solid #ebccd1;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 60px;
+            font-size: 11px;
+            color: #888;
+        }
+
+        .text-green-ifba {
+            color: var(--green-suap);
+            font-weight: 600;
+        }
+
+        /* RESPONSIVIDADE MOBILE */
+        @media (max-width: 768px) {
+            body {
+                font-size: 16px;
+            }
+
+            .sidebar {
+                transform: translateX(-240px);
+            }
+
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+
+            .toggle-btn {
+                left: 12px;
+                top: 20px;
+                transform: none;
+                background: rgba(0,0,0,0.5);
+                border-color: rgba(255,255,255,0.3);
+            }
+
+            .sidebar.mobile-open ~ .main-content .toggle-btn {
+                left: 228px;
+                background: rgba(255,255,255,0.15);
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 15px;
+                align-items: flex-start;
+                padding-top: 60px;
+            }
+
+            .card {
+                padding: 20px;
+                min-height: auto;
+            }
+
+            h1 {
+                font-size: 20px;
+                margin-bottom: 20px;
+            }
+
+            .accordion-title {
+                font-size: 14px;
+                margin-bottom: 12px;
+            }
+
+            /* Form stack vertical em mobile */
+            .form-group {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 15px;
+            }
+
+            .form-label {
+                width: 100%;
+                text-align: left;
+                margin-right: 0;
+                margin-bottom: 8px;
+            }
+
+            .form-input-container {
+                width: 100%;
+            }
+
+            input[type="text"], input[type="date"] {
+                font-size: 16px;
+                padding: 10px 12px;
+            }
+
+            .custom-select-trigger {
+                font-size: 16px;
+                padding: 10px 12px;
+            }
+
+            .custom-option {
+                font-size: 16px;
+                padding: 12px;
+            }
+
+            .btn-submit {
+                width: 100%;
+                padding: 12px 20px;
+                font-size: 16px;
+            }
+
+            .suap-message-box {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .icon-circle {
+                margin-bottom: 8px;
+            }
+
+            .footer {
+                font-size: 10px;
+                margin-top: 40px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .card {
+                padding: 15px;
+            }
+
+            h1 {
+                font-size: 18px;
+            }
+
+            .logo-text {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <aside class="sidebar" id="sidebar">
+        <div class="logo-container">
+            <div class="logo-text">suap</div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="toggle-btn" id="toggleBtn">
+            <div class="toggle-icon"></div>
+        </div>
+
+        <div class="card">
+            <h1>Autenticação de Documento</h1>
+            <div class="accordion-title">Formulário de Autenticação</div>
+
+            <form id="authForm">
+                <div class="form-group">
+                    <label class="form-label">Tipo de Documento:<span class="required">*</span></label>
+                    <div class="form-input-container">
+                        <div class="custom-select-wrapper">
+                            <div class="custom-select-trigger" id="dropdownTrigger">ENCCEJA</div>
+                            <div class="custom-options" id="dropdownOptions">
+                                <div class="custom-option" data-value="Historico Parcial">Histórico Parcial</div>
+                                <div class="custom-option" data-value="Certificado">Certificado de Participação em Evento</div>
+                                <div class="custom-option" data-value="Vinculo">Declaração de Vínculo</div>
+                                <div class="custom-option" data-value="Historico Final">Histórico Final</div>
+                                <div class="custom-option" data-value="Diploma">Diploma/Certificado</div>
+                                <div class="custom-option" data-value="Atestado">Atestado de Diploma</div>
+                                <div class="custom-option" data-value="Matricula Detalhada">Declaração de Matrícula Detalhada</div>
+                                <div class="custom-option" data-value="Conclusao">Atestado de Conclusão</div>
+                                <div class="custom-option" data-value="Pesquisa">Pesquisa</div>
+                                <div class="custom-option" data-value="Dados Academicos">Comprovante de Dados Acadêmicos</div>
+                                <div class="custom-option" data-value="Manual">Histórico Final Assinatura Manual</div>
+                                <div class="custom-option" data-value="Extensao">Extensão</div>
+                                <div class="custom-option" data-value="Conclusao Componentes">Declaração de Conclusão de Componentes</div>
+                                <div class="custom-option" data-value="Enem">Enem</div>
+                                <div class="custom-option" data-value="Certificado Parcial">Certificado Parcial</div>
+                                <div class="custom-option" data-value="Historico">Histórico</div>
+                                <div class="custom-option" data-value="Declaracao Matricula">Declaração de Matrícula</div>
+                                <div class="custom-option" data-value="Declaracao Parcial">Declaração Parcial</div>
+                                <div class="custom-option selected" data-value="ENCCEJA">ENCCEJA</div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="tipoDocumento" value="ENCCEJA">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Data da Emissão:<span class="required">*</span></label>
+                    <div class="form-input-container">
+                        <input type="text" id="dataEmissao" value="17/12/2025">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Código Verificador:<span class="required">*</span></label>
+                    <div class="form-input-container">
+                        <input type="text" id="codigoVerificador">
+                    </div>
+                </div>
+
+                <div style="margin-top: 25px;">
+                    <button type="submit" class="btn-submit">Enviar</button>
+                </div>
+
+                <div id="errorBox" class="alert-error"></div>
+            </form>
+
+            <div id="resultSection">
+                <div class="accordion-title">Resultado da Verificação</div>
+                <div class="suap-message-box">
+                    <div class="icon-circle">!</div>
+                    <span>
+                        <strong>Documento autenticado com sucesso.</strong>
+                        <a href="#" id="linkArquivo" class="suap-link">Visualize o arquivo.</a>
+                    </span>
+                </div>
+            </div>
+
+            <div class="footer">
+                © 2022 SUAP | Desenvolvimento: IFRN / <span class="text-green-ifba">IFBA</span> - diretor
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Configuração do Sidebar
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.getElementById('toggleBtn');
+
+        toggleBtn.addEventListener('click', () => {
+            if (window.innerWidth <= 768) {
+                sidebar.classList.toggle('mobile-open');
+            } else {
+                sidebar.classList.toggle('collapsed');
+            }
+        });
+
+        // Fechar sidebar ao clicar fora em mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768 && 
+                sidebar.classList.contains('mobile-open') && 
+                !sidebar.contains(e.target) && 
+                !toggleBtn.contains(e.target)) {
+                sidebar.classList.remove('mobile-open');
+            }
+        });
+
+        // Custom Dropdown
+        const trigger = document.getElementById('dropdownTrigger');
+        const optionsMenu = document.getElementById('dropdownOptions');
+        const hiddenInput = document.getElementById('tipoDocumento');
+        const options = document.querySelectorAll('.custom-option');
+
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            optionsMenu.classList.toggle('open');
+        });
+
+        options.forEach(opt => opt.addEventListener('click', () => {
+            trigger.textContent = opt.textContent;
+            hiddenInput.value = opt.getAttribute('data-value');
+            optionsMenu.classList.remove('open');
+            options.forEach(o => o.classList.remove('selected'));
+            opt.classList.add('selected');
+        }));
+
+        document.addEventListener('click', (e) => {
+            if (!trigger.contains(e.target)) {
+                optionsMenu.classList.remove('open');
+            }
+        });
+
+        // Validação do Formulário
+        const form = document.getElementById('authForm');
+        const errorBox = document.getElementById('errorBox');
+        const resultSection = document.getElementById('resultSection');
+        const linkArquivo = document.getElementById('linkArquivo');
+
+        const CODIGO_CORRETO = "2a596ad";
+        const NOME_DO_ARQUIVO = "certificado.pdf";
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            errorBox.style.display = 'none';
+            resultSection.style.display = 'none';
+
+            const data = document.getElementById('dataEmissao').value;
+            const codigoInput = document.getElementById('codigoVerificador').value.trim();
+
+            if (!data || !codigoInput) {
+                errorBox.textContent = 'Este campo é obrigatório.';
+                errorBox.style.display = 'block';
+                return;
+            }
+
+            if (codigoInput !== CODIGO_CORRETO) {
+                errorBox.textContent = 'Código verificador não encontrado.';
+                errorBox.style.display = 'block';
+                return;
+            }
+
+            linkArquivo.href = NOME_DO_ARQUIVO;
+            linkArquivo.target = "_blank";
+            resultSection.style.display = 'block';
+        });
+    </script>
+</body>
+</html>
